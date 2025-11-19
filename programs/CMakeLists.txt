@@ -13,17 +13,14 @@ FetchContent_MakeAvailable(godot-sandbox)
 
 function (add_ci_program name)
 	add_sandbox_program(${name} ${ARGN})
-	set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+	set_target_properties(${name} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/${PROJECT_NAME})
 endfunction()
 
 # Build the trivial examples
-add_subdirectory(hello-world)
+add_subdirectory(tni-mod-template)
 
 # Build the examples that require full Linux/C++ support
 if (NOT EMBEDDED_RISCV)
-	add_subdirectory(asm)
-	add_subdirectory(libtcc)
-	add_subdirectory(luajit)
-	add_subdirectory(mir)
-	add_subdirectory(robust_skin_weight_transfer)
+	# if your mod needs full linux/c++ suppoirt, add it here
+
 endif()

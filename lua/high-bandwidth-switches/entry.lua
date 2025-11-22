@@ -1,6 +1,11 @@
 function on_engine_load(modding_api)
-    print("High BW capacity switches!")
+    print("High BW capacity switches!", "") -- output won't flush without newline
+    print("1337") -- this flushes the previous output
     modding_api.call("sanity")
+end
+
+function on_mod_reload(modding_api)
+    print("Pressed the reload action key (F11), reloading mod...")
 end
 
 function on_device_spawned(modding_api, device)

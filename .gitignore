@@ -6,5 +6,7 @@
 *.so
 .vscode/
 
+changes.diff
+
 !programs/luajit/libluajit.a
 !programs/luajit/zig-libluajit.a

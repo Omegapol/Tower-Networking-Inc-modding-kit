@@ -37,26 +37,15 @@ static Variant set_lua_source(String code, String path) {
     return Nil;
 }
 
-static std::vector<Variant> temp_objects;
-static void clear_temp_objects() {
-    temp_objects.clear();
-}
-
-static void push_object_to_lua(Variant* obj_ptr, bool is_temp = false) {
-    if (is_temp) {
-        // store in stack
-        temp_objects.push_back(*obj_ptr);
-        obj_ptr = &temp_objects.back();
-    }
-    
-    Variant** ud = (Variant**)lua_newuserdata(L, sizeof(Variant*));
-    *ud = obj_ptr;
+static void push_object_to_lua(Variant* obj_ptr) {
+    // Copy Variant directly into Lua's memory (is_temp parameter ignored)
+    Variant* ud = (Variant*)lua_newuserdata(L, sizeof(Variant));
+    new (ud) Variant(*obj_ptr);  // Placement new for copy construction
     
     if (luaL_newmetatable(L, "GodotObjectTemp")) {
         lua_pushstring(L, "__index");
         lua_pushcfunction(L, [](lua_State *L) -> int {
-            Variant** ud = (Variant**)luaL_checkudata(L, 1, "GodotObjectTemp");
-            Variant* obj_ptr = *ud;
+            Variant* obj_ptr = (Variant*)luaL_checkudata(L, 1, "GodotObjectTemp");
             const char *key = luaL_checkstring(L, 2);
             
             lua_pushlightuserdata(L, obj_ptr);
@@ -87,13 +76,34 @@ static void push_object_to_lua(Variant* obj_ptr, bool is_temp = false) {
                     case Variant::Type::FLOAT: lua_pushnumber(L, res); return 1;
                     case Variant::Type::STRING:
                         lua_pushstring(L, res.as_std_string().c_str()); return 1;
-					case Variant::Type::OBJECT:
-    					push_object_to_lua(&res, true);  // mark as temporary stack
-    					return 1;
+                    case Variant::Type::OBJECT:
+                        push_object_to_lua(&res);
+                        return 1;
                     default: return 0;
                 }
             }, 2);
             return 1;
+        });
+        lua_settable(L, -3);
+        
+        // Add garbage collection metamethod
+        lua_pushstring(L, "__gc");
+        lua_pushcfunction(L, [](lua_State *L) -> int {
+            Variant* obj_ptr = (Variant*)lua_touserdata(L, 1);
+            if (obj_ptr) {
+                // handle any exceptions from destructor
+                try {
+                    obj_ptr->~Variant();
+                } catch (const std::exception& e) {
+                    // don't propagate - errors in __gc are fatal
+                    printf("Warning: Exception in Variant destructor: %s\n", e.what());
+	                fflush(stdout);
+                } catch (...) {
+                    printf("Warning: Unknown exception in Variant destructor\n");
+	                fflush(stdout);
+                }
+            }
+            return 0;
         });
         lua_settable(L, -3);
     }
@@ -108,7 +118,6 @@ static void push_object_to_lua(Variant* obj_ptr, bool is_temp = false) {
             return Nil; \
         } \
         Variant v_api = modding_api; \
-		clear_temp_objects(); \
         push_object_to_lua(&v_api); \
         if (lua_pcall(L, 1, 0, 0) != 0) { \
             const char *err = lua_tostring(L, -1); \
@@ -125,7 +134,6 @@ static void push_object_to_lua(Variant* obj_ptr, bool is_temp = false) {
             lua_pop(L, 1); \
             return Nil; \
         } \
-		clear_temp_objects(); \
         Variant v_api = modding_api; \
         Variant v_param = param1; \
         push_object_to_lua(&v_api); \

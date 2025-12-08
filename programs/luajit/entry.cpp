@@ -119,9 +119,10 @@ static void push_object_to_lua(Variant* obj_ptr) {
         } \
         Variant v_api = modding_api; \
         push_object_to_lua(&v_api); \
-        if (lua_pcall(L, 1, 0, 0) != 0) { \
+        if (lua_pcall(L, 1, 0, 0) != LUA_OK) { \
             const char *err = lua_tostring(L, -1); \
             printf("Lua error: %s\n", err); \
+            fflush(stdout); \
             lua_pop(L, 1); \
         } \
         return Nil; \
@@ -138,9 +139,10 @@ static void push_object_to_lua(Variant* obj_ptr) {
         Variant v_param = param1; \
         push_object_to_lua(&v_api); \
         push_object_to_lua(&v_param); \
-        if (lua_pcall(L, 2, 0, 0) != 0) { \
+        if (lua_pcall(L, 2, 0, 0) != LUA_OK) { \
             const char *err = lua_tostring(L, -1); \
             printf("Lua error: %s\n", err); \
+             fflush(stdout); \
             lua_pop(L, 1); \
         } \
         return Nil; \

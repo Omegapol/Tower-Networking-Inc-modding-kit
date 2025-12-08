@@ -65,3 +65,8 @@ zig.cmd
 ```
 
 The built output (a .elf file) will be in the `.zig/<name-of-your-mod>/entry.elf` directory.
+
+### Archlinux (WSL)
+1. Install toolchain for riscv64: 
+`pacman -S extra/riscv64-linux-gnu-binutils extra/riscv64-linux-gnu-gcc extra/riscv64-linux-gnu-glibc extra/cmake`
+2. Make sure correct CC/CXX settings are configured to point to the toolchain

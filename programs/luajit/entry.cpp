@@ -17,6 +17,34 @@ static int api_print(lua_State *L) {
 	return 0;
 }
 
+int traceback_error_handler(lua_State* L) {
+    const char* msg = lua_tostring(L, 1);
+    if (msg == nullptr) {
+        if (luaL_callmeta(L, 1, "__tostring"))
+            msg = lua_tostring(L, -1);
+        else
+            msg = "(error object is not a string)";
+    }
+    luaL_traceback(L, L, msg, 1);
+    return 1;
+}
+
+int lua_traced_call(lua_State* L, int nargs)
+{
+    int func_index = lua_gettop(L) - nargs;
+    lua_pushcfunction(L, traceback_error_handler);
+    lua_insert(L, func_index);
+    int errfunc = func_index;
+    int status = lua_pcall(L, nargs, 0, errfunc);
+    lua_remove(L, errfunc);
+    if (status != LUA_OK) {
+        const char* msg = lua_tostring(L, -1);
+        printf("Lua error:\n%s\n", msg);
+        lua_pop(L, 1); // pop error message
+    }
+    return status;
+}
+
 static Variant set_lua_source(String code, String path) {
     // TODO: do something with path?
     const std::string utf = code.utf8();
@@ -26,14 +54,7 @@ static Variant set_lua_source(String code, String path) {
         lua_pop(L, 1);
         return Nil;
     }
-    
-    if (lua_pcall(L, 0, 0, 0) != 0) {
-        const char *err = lua_tostring(L, -1);
-        printf("Lua exec error: %s\n", err);
-        lua_pop(L, 1);
-        return Nil;
-    }
-    
+    lua_traced_call(L, 0);
     return Nil;
 }
 
@@ -119,12 +140,7 @@ static void push_object_to_lua(Variant* obj_ptr) {
         } \
         Variant v_api = modding_api; \
         push_object_to_lua(&v_api); \
-        if (lua_pcall(L, 1, 0, 0) != LUA_OK) { \
-            const char *err = lua_tostring(L, -1); \
-            printf("Lua error: %s\n", err); \
-            fflush(stdout); \
-            lua_pop(L, 1); \
-        } \
+        lua_traced_call(L, 1); \
         return Nil; \
     }
 
@@ -139,12 +155,7 @@ static void push_object_to_lua(Variant* obj_ptr) {
         Variant v_param = param1; \
         push_object_to_lua(&v_api); \
         push_object_to_lua(&v_param); \
-        if (lua_pcall(L, 2, 0, 0) != LUA_OK) { \
-            const char *err = lua_tostring(L, -1); \
-            printf("Lua error: %s\n", err); \
-             fflush(stdout); \
-            lua_pop(L, 1); \
-        } \
+        lua_traced_call(L, 2); \
         return Nil; \
     }
 

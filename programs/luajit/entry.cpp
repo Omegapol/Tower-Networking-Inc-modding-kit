@@ -46,9 +46,8 @@ int lua_traced_call(lua_State* L, int nargs)
 }
 
 static Variant set_lua_source(String code, String path) {
-    // TODO: do something with path?
     const std::string utf = code.utf8();
-    if (luaL_loadbuffer(L, utf.c_str(), utf.size(), "@code") != 0) {
+    if (luaL_loadbuffer(L, utf.c_str(), utf.size(), ("@"+path.utf8()).c_str()) != 0) {
         const char *err = lua_tostring(L, -1);
         printf("Lua load error: %s\n", err);
         lua_pop(L, 1);
